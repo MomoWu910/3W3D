@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+	body {
+		background-color: #fff;
+		color: #111;
+		margin: 0px;
+		overflow: hidden;
+		font-family: Monospace;
+		font-size: 20px;
+	}
+	#info {
+		position: absolute;
+		top: 0px; width: 100%;
+		
+		padding: 5px;
+		text-align: center;
+		color: #ffff00
+	}
+	a {color: #00ffff}
+	strong {color:red}
+	
+</style>
+</head>
+
+<body> 
+
+<div id="info">
+    type <strong>z</strong> to control the door<br/>
+</div>
+<audio id="open" style="display:none">
+<source src="sounds/open.mp3" type='audio/wav'>
+</audio>
+
+<audio id="close"  style="display:none">
+<source src="sounds/close.WAV" type='audio/mp3'>
+</audio>
+
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script src="js/KeyboardState.js"></script>
+<script>
+
+var scene, renderer, camera;
+var controls;
+var pillar, pillar2, pillar3, pillar4, board, knob, cylinder, joint, joint2;
+var angle = 0;
+var boxMaterial, boxMaterial2;
+var keyboard = new KeyboardState(), turn = true;
+var open, close;
+var isPaused = false, soundVal = 1.0, sign = 1.0;
+init();
+animate();
+
+function toggle() {
+			isPaused = !isPaused;
+			sign = isPaused ? -1 : 1;
+			console.log (isPaused);
+}
+function init()
+{
+
+	open = document.getElementById ('open');
+	close = document.getElementById ('close');
+	
+	var width = window.innerWidth;
+	var height = window.innerHeight;
+	var wood = new THREE.ImageUtils.loadTexture ('images/wood.jpg');
+	var wood_bump = new THREE.ImageUtils.loadTexture ('images/wood_bump.png');
+	var wood2 = new THREE.ImageUtils.loadTexture ('images/wood2.jpg');
+	var wood2_bump = new THREE.ImageUtils.loadTexture ('images/wood2_bump.png');
+	renderer = new THREE.WebGLRenderer({antialias: true});
+	renderer.setSize (width, height);
+	renderer.setClearColor (0x888888);
+	
+	document.body.appendChild (renderer.domElement);
+
+	scene = new THREE.Scene();
+
+	camera = new THREE.PerspectiveCamera (45, width/height, 0.1, 10000);
+	camera.position.y = 160;
+	camera.position.z = 400;
+	camera.lookAt (new THREE.Vector3(0,0,0));
+
+	controls = new THREE.OrbitControls (camera, renderer.domElement);
+
+	
+	boxMaterial = new THREE.MeshPhongMaterial ({
+		wireframe:false, 
+		map: wood,
+		bumpMap: wood_bump,
+		bumpScale: 0.8,
+        side: THREE.DoubleSide
+	});
+	boxMaterial2 = new THREE.MeshPhongMaterial ({
+		wireframe:false, 
+		map: wood2,
+		bumpMap: wood2_bump,
+		bumpScale: 0.8,
+        side: THREE.DoubleSide
+	});
+	var boxGeometry = new THREE.BoxGeometry (90, 10, 10);
+	pillar = new createMesh (boxGeometry, boxMaterial);
+	scene.add (pillar);
+
+	boxGeometry = new THREE.BoxGeometry (90, 10, 10);
+	pillar2 = new createMesh (boxGeometry, boxMaterial);
+	scene.add (pillar2);
+	
+	boxGeometry = new THREE.BoxGeometry (10, 145, 10);
+	pillar3 = new createMesh (boxGeometry, boxMaterial);
+	scene.add (pillar3);
+	
+	boxGeometry = new THREE.BoxGeometry (10, 145, 10);
+	pillar4 = new createMesh (boxGeometry, boxMaterial);
+	scene.add (pillar4);
+	
+	cyl_geom = new THREE.CylinderGeometry (2, 2, 8,32);
+	joint = new THREE.Mesh (cyl_geom, boxMaterial2);
+	scene.add (joint);
+	
+	boxGeometry = new THREE.BoxGeometry (70, 145, 5);
+	board = new THREE.Mesh (boxGeometry, boxMaterial2);
+	joint.add (board);
+	
+	var cyl_geom = new THREE.CylinderGeometry (2, 2, 5,32);
+	cylinder = new THREE.Mesh (cyl_geom, boxMaterial2);
+	board.add (cylinder);
+	
+	knob = new THREE.Mesh(new THREE.SphereGeometry(5, 50, 50), boxMaterial2);
+	board.add (knob);
+	
+	cyl_geom = new THREE.CylinderGeometry (2, 2, 8,32);
+	joint2 = new THREE.Mesh (cyl_geom, boxMaterial2);
+	scene.add (joint2);
+	
+	var gridXZ = new THREE.GridHelper(100, 10);
+	gridXZ.setColors( new THREE.Color(0xff0000), new THREE.Color(0xffffff) );
+	scene.add(gridXZ);
+
+	var pointLight = new THREE.PointLight (0xffffff);
+	pointLight.position.set (0,300,200);
+	scene.add (pointLight);
+
+	var ambientLight = new THREE.AmbientLight (0x111111);
+	scene.add(ambientLight);
+
+	
+	window.addEventListener ('resize', onWindowResize, false);	
+}
+function createMesh(geom, imageFile, bump) 
+{
+ geom.computeVertexNormals();
+
+ var mat = new THREE.MeshPhongMaterial();
+ var texture = THREE.ImageUtils.loadTexture("images/" + imageFile)
+ mat.map = texture;
+
+ var bump = THREE.ImageUtils.loadTexture("images/" + bump)
+ mat.bumpMap = bump;
+ mat.bumpScale = 0.2;
+
+ var mesh = new THREE.Mesh(geom, mat);
+
+ return mesh;
+}
+function toggleTurn ()
+{
+	turn = !turn;
+	
+}
+		
+function animate()
+{
+	
+	soundVal = THREE.Math.clamp (soundVal, 0, 1);
+	
+	if (0 < angle < 1.5) { 
+		open.volume = soundVal;
+	}
+	if (angle < 0){
+		close.volume = soundVal;
+		angle = 0;
+	}
+	requestAnimationFrame ( animate );  
+	update();
+	render(); 
+}
+
+function update()
+{
+	keyboard.update();
+	controls.update();
+	if ( keyboard.down("Z")) 
+		toggleTurn();   
+	if (turn) { 
+		if(angle <= 1.5){
+			angle += 0.005;
+		}
+	}else if (!turn){
+		if(angle > 0)
+			angle -= 0.005;
+	}
+}
+
+function onWindowResize()
+{
+	var width= window.innerWidth, height = window.innerHeight;
+	camera.aspect = width / height;
+	camera.updateProjectionMatrix();
+	renderer.setSize (width, height);
+}
+
+function render()
+{
+	//pillar.rotation.y = theta1;
+	pillar.position.set (45, 5, -5);
+	pillar2.position.set (45, 159, -5);
+	pillar3.position.set (5, 82, -5);
+	pillar4.position.set (85, 82, -5);
+	joint.rotation.y = angle;
+	board.position.set (-35, -53, -5);
+	knob.position.set (-25, 10, 10);
+	cylinder.rotation.x = Math.PI/2;
+	cylinder.position.set (-25, 10, 5);
+	joint.position.set (80, 135, 2);
+	joint2.position.set (80, 35, 2);
+	renderer.render (scene, camera);
+}
+</script>
+</body>
+
+</html>
